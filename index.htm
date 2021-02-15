@@ -40,7 +40,7 @@ textarea:focus {
 	z-index: 0;
 }
 	
-#download {
+#buttons {
 	position:fixed;
 	right: 5;
 	top: 5;
@@ -135,19 +135,19 @@ textarea:focus {
 		if(DEBUG) console.log([e.target, lastnode])
 		if(lastnode == 0) {
 		  if(e.target.tagName == "TEXTAREA") {
-			lastnode = e.target;  
+			lastnode = e.target;
 		  }
           if(e.target.className == "line") {
-			lastnode = e.target;  
+			lastnode = e.target;
 		  }
 
-		  return;	
-		} 		
+		  return;
+		}
 		else if(lastnode == e.target) {
 			// Delete line
 			if (lastnode.className == "line") {
-				lastnode.parentNode.removeChild(lastnode)					   
-			}	
+				lastnode.parentNode.removeChild(lastnode)
+			}
 		}
 		else if(lastnode.tagName == "TEXTAREA" && e.target.tagName == "TEXTAREA") {
 		
@@ -157,7 +157,7 @@ textarea:focus {
 			line.setAttribute("right-note", e.target.id)
 			document.getElementById("wrap").append(line)
 			
-			doLine(line, lastnode, e.target)			
+			doLine(line, lastnode, e.target)
 		}
 		
 		
@@ -178,14 +178,14 @@ textarea:focus {
 
 		line.style.width=Math.sqrt((x2 - x1)**2 + (y2 - y1)**2).toFixed(4)
 		line.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1).toFixed(4)}rad)`
-	}	
+	}
 	
 	// document.getElementsByTagName("html")[0].outerHTML
 	
 	function download() {
-	    filename = 'murderboard.htm'
+	    var filename = 'murderboard.htm'
 
-        data = document.getElementsByTagName("html")[0].outerHTML
+        var data = document.getElementsByTagName("html")[0].outerHTML
 
         var blob = new Blob([data], {type: 'text/html'}),
             e    = document.createEvent('MouseEvents'),
@@ -196,6 +196,19 @@ textarea:focus {
         a.dataset.downloadurl =  ['text/html', a.download, a.href].join(':')
         e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
         a.dispatchEvent(e)
+	}
+
+	function scootch(direction) {
+        var delta = 200;
+        document.querySelectorAll("textarea").forEach((x) => {
+          switch(direction) {
+		    case "right" : x.style.left = x.offsetLeft + delta; break;
+		    case "down"  : x.style.top  = x.offsetTop + delta; break;
+          }
+        })
+
+        document.querySelectorAll(".line").forEach((x) => doLine(x))
+
 	}
 
     window.onbeforeunload = function() {
@@ -210,7 +223,11 @@ textarea:focus {
 	<div id=wrap>
     <h1 contenteditable> test</h1>
 
+    <div id=buttons>
 		<button id=download onclick="download()">Download</button>
+		<button id=scootchDown onclick="scootch('down')">ScootchDown</button>
+		<button id=scootchRight onclick="scootch('right')">ScootchRight</button>
+    </div>
 		
 		
 		
