@@ -183,7 +183,7 @@ textarea:focus {
 	// document.getElementsByTagName("html")[0].outerHTML
 	
 	function download() {
-	    var filename = 'murderboard.htm'
+	    var filename = window.location.pathname.split("/").pop()
 
         var data = document.getElementsByTagName("html")[0].outerHTML
 
