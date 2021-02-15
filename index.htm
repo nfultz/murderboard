@@ -183,7 +183,7 @@ textarea:focus {
 	// document.getElementsByTagName("html")[0].outerHTML
 	
 	function download() {
-	    var filename = window.location.pathname.split("/").pop()
+        var filename = window.location.href.split("/").filter(x => x.length).pop()
 
         var data = document.getElementsByTagName("html")[0].outerHTML
 
