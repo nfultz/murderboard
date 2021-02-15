@@ -1,0 +1,225 @@
+<html>
+<head>
+	<title>Murderboard</title>
+	  <meta charset="UTF-8">
+	<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Ctext%20x='0'%20y='14'%3E🧵%3C/text%3E%3C/svg%3E" type="image/svg+xml" />
+
+<style>
+body {
+  background: url("cork.jpg") repeat;
+	font-family: "Comic Sans MS", "Comic Sans", cursive;
+	font-size: xx-large;
+	height: 100000;
+	width: 100000;
+	}
+	
+textarea {
+    background: yellow;
+	color: black;
+	height: 100;
+	width: 100;
+	display: block;
+	text-align:center;
+	position: absolute;
+	border: solid 1px;
+	font-family: "Comic Sans MS", "Comic Sans", cursive;
+	font-size: large;
+    z-index: 2;
+	}
+	
+textarea:focus {
+	z-index: 9999 !important;
+	background: red !important;
+	}
+	
+.line {
+    height: 1;
+    border-bottom: 2px solid red;
+/*    -webkit-transform:
+        translateY(-20px)
+        translateX(5px)
+        rotate(27deg); */
+    position: absolute;
+	transform-origin: 0% 0%;
+	z-index: 0;
+    /* top: -20px; */
+}
+	
+#download {
+	position:fixed;
+	right: 5;
+	top: 5;
+	}
+
+</style>
+
+<script>
+
+	DEBUG = false;
+	
+	document.addEventListener("dblclick", function(e) {
+		if(DEBUG) console.log(e)
+		if (e.target != document.body) return;
+		card = document.createElement("textarea")
+		card.innerText = "foo"
+		card.style.left = 10*Math.round(e.offsetX / 10)
+		card.style.top = 10*Math.round(e.offsetY / 10)
+		
+		card.id = "card_" + Math.floor(Date.now() / 1000)
+		card.draggable = true
+		
+		document.getElementById("wrap").append(card);
+        document.getElementById("wrap").append(document.createTextNode("\n"));
+	})
+
+	// Writes notes back to DOM for later saving
+	document.addEventListener("focusout", function(e) {
+		if (e.target.tagName == "TEXTAREA") {
+			if(DEBUG) console.log(e)
+			e.target.innerText = e.target.value
+			
+			if(e.target.value == "") {
+				e.target.parentNode.removeChild(e.target)
+
+				// Remove dangling lines
+				var wrap = document.getElementById("wrap");
+				document.querySelectorAll(`.line[left-note="${e.target.id}" ]`).forEach((x) => wrap.removeChild(x))
+				document.querySelectorAll(`.line[right-note="${e.target.id}" ]`).forEach((x) => wrap.removeChild(x))
+			}
+		}
+	})
+
+  // Drag Drop
+	
+	var dragged;
+	document.addEventListener("dragstart", function(e) {
+		dragged = {x: e.x, y: e.y}
+	})
+	
+	// Needed to allow drop event to fire, which vetos the canceling animation
+	document.addEventListener('dragover', function(e) { e.preventDefault() })
+	
+	document.addEventListener("dragend", function(e) {
+		e.target.style.left = e.target.offsetLeft + e.x - dragged.x
+		e.target.style.top  = e.target.offsetTop  + e.y - dragged.y
+		if (e.target.tagName == "TEXTAREA") {			
+            document.querySelectorAll(`.line[left-note="${e.target.id}" ]`).forEach((x) => doLine(x, e.target, null))
+			document.querySelectorAll(`.line[right-note="${e.target.id}" ]`).forEach((x) => doLine(x, null, e.target))
+		}
+	})
+
+	
+	// Keyboard movement w/ ctrl+shift+arrow
+	
+	// Writes notes back to DOM for later saving
+	document.addEventListener("keydown", function(e) {
+
+		if (e.target.tagName == "TEXTAREA" && e.shiftKey && e.ctrlKey) {
+			if(DEBUG) console.log(`left${e.target.style.left}\n`)
+			var delta = 10;
+			switch(e.key) {
+				case "ArrowLeft" : e.target.style.left = e.target.offsetLeft - delta; break;
+				case "ArrowRight": e.target.style.left = e.target.offsetLeft + delta; break;
+				case "ArrowUp"   : e.target.style.top  = e.target.offsetTop  - delta; break;
+				case "ArrowDown" : e.target.style.top  = e.target.offsetTop  + delta; break;
+				default : return;
+			}
+			if(DEBUG) console.log(`*left${e.target.style.left}\n`)
+			
+            document.querySelectorAll(`.line[left-note="${e.target.id}" ]`).forEach((x) => doLine(x, e.target, null))
+			document.querySelectorAll(`.line[right-note="${e.target.id}" ]`).forEach((x) => doLine(x, null, e.target))
+
+		}
+	})
+
+	
+	
+	var lastnode = 0;
+	document.addEventListener("click", function(e) {
+		if(!e.ctrlKey) return;
+		if(DEBUG) console.log([e.target, lastnode])
+		if(lastnode == 0) {
+		  if(e.target.tagName == "TEXTAREA") {
+			lastnode = e.target;  
+		  }
+          if(e.target.className == "line") {
+			lastnode = e.target;  
+		  }
+
+		  return;	
+		} 		
+		else if(lastnode == e.target) {
+			// Delete line
+			if (lastnode.className == "line") {
+				lastnode.parentNode.removeChild(lastnode)					   
+			}	
+		}
+		else if(lastnode.tagName == "TEXTAREA" && e.target.tagName == "TEXTAREA") {
+		
+			var line = document.createElement("div")
+			line.className = "line"
+			line.setAttribute("left-note", lastnode.id)
+			line.setAttribute("right-note", e.target.id)
+			document.getElementById("wrap").append(line)
+			
+			doLine(line, lastnode, e.target)			
+		}
+		
+		
+		lastnode = 0;
+	})
+
+	function doLine(line, left_note, right_note) {
+
+		left_note = left_note || document.getElementById(line.getAttribute("left-note"))
+		right_note = right_note || document.getElementById(line.getAttribute("right-note"))
+
+
+		var x1 = line.style.left = left_note.offsetLeft + left_note.offsetWidth/2
+		var y1 = line.style.top = left_note.offsetTop + left_note.offsetHeight/2
+
+		var x2 = right_note.offsetLeft + right_note.offsetWidth/2
+		var y2 = right_note.offsetTop + right_note.offsetHeight/2
+
+		line.style.width=Math.sqrt((x2 - x1)**2 + (y2 - y1)**2).toFixed(4)
+		line.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1).toFixed(4)}rad)`
+	}	
+	
+	// document.getElementsByTagName("html")[0].outerHTML
+	
+	function download() {
+	    filename = 'murderboard.htm'
+
+        data = document.getElementsByTagName("html")[0].outerHTML
+
+        var blob = new Blob([data], {type: 'text/html'}),
+            e    = document.createEvent('MouseEvents'),
+            a    = document.createElement('a')
+
+        a.download = filename
+        a.href = window.URL.createObjectURL(blob)
+        a.dataset.downloadurl =  ['text/html', a.download, a.href].join(':')
+        e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+        a.dispatchEvent(e)
+	}
+	
+</script>
+
+	
+</head>
+<body>
+	<div id=wrap>
+    <h1 contenteditable> test</h1>
+
+		<button id=download onclick="download()">Download</button>
+		
+		
+		
+	<textarea> Double Click to add cards</textarea>
+
+	
+	</div>	
+	
+</body>
+
+<html>
