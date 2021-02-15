@@ -197,6 +197,10 @@ textarea:focus {
         e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
         a.dispatchEvent(e)
 	}
+
+    window.onbeforeunload = function() {
+            return 'You have unsaved changes!';
+    }
 	
 </script>
 
