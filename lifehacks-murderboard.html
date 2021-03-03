@@ -1,0 +1,309 @@
+<html><head>
+	<title>Murderboard</title>
+	  <meta charset="UTF-8">
+	<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Ctext%20x='0'%20y='14'%3E🧵%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+
+<style>
+body {
+  background: url("cork.jpg") repeat;
+	font-family: "Comic Sans MS", "Comic Sans", cursive;
+	font-size: xx-large;
+	height: 100000;
+	width: 100000;
+	}
+	
+textarea {
+    background: yellow;
+	color: black;
+	height: 100;
+	width: 100;
+	display: block;
+	text-align:center;
+	position: absolute;
+	border: solid 1px;
+	font-family: "Comic Sans MS", "Comic Sans", cursive;
+	font-size: large;
+    z-index: 2;
+	}
+	
+textarea:focus {
+	z-index: 9999 !important;
+	background: red !important;
+	}
+	
+.line {
+    height: 1;
+    border-bottom: 4px solid red;
+    position: absolute;
+	transform-origin: 0% 0%;
+	z-index: 0;
+}
+	
+#buttons {
+	position:fixed;
+	right: 5;
+	top: 5;
+	}
+
+</style>
+
+<script>
+
+	DEBUG = false;
+	
+	document.addEventListener("dblclick", function(e) {
+		if(DEBUG) console.log(e)
+		if (e.target != document.body) return;
+		card = document.createElement("textarea")
+		card.innerText = "foo"
+		card.style.left = 10*Math.round(e.offsetX / 10)
+		card.style.top = 10*Math.round(e.offsetY / 10)
+		
+		card.id = "card_" + Math.floor(Date.now() / 1000)
+		card.draggable = true
+		
+		document.getElementById("wrap").append(card);
+        document.getElementById("wrap").append(document.createTextNode("\n"));
+	})
+
+	// Writes notes back to DOM for later saving
+	document.addEventListener("focusout", function(e) {
+		if (e.target.tagName == "TEXTAREA") {
+			if(DEBUG) console.log(e)
+			e.target.innerText = e.target.value
+			
+			if(e.target.value == "") {
+				e.target.parentNode.removeChild(e.target)
+
+				// Remove dangling lines
+				var wrap = document.getElementById("wrap");
+				document.querySelectorAll(`.line[left-note="${e.target.id}" ]`).forEach((x) => wrap.removeChild(x))
+				document.querySelectorAll(`.line[right-note="${e.target.id}" ]`).forEach((x) => wrap.removeChild(x))
+			}
+		}
+	})
+
+  // Drag Drop
+	
+	var dragged;
+	document.addEventListener("dragstart", function(e) {
+		dragged = {x: e.x, y: e.y}
+	})
+	
+	// Needed to allow drop event to fire, which vetos the canceling animation
+	document.addEventListener('dragover', function(e) { e.preventDefault() })
+	
+	document.addEventListener("dragend", function(e) {
+		e.target.style.left = e.target.offsetLeft + e.x - dragged.x
+		e.target.style.top  = e.target.offsetTop  + e.y - dragged.y
+		if (e.target.tagName == "TEXTAREA") {			
+            document.querySelectorAll(`.line[left-note="${e.target.id}" ]`).forEach((x) => doLine(x, e.target, null))
+			document.querySelectorAll(`.line[right-note="${e.target.id}" ]`).forEach((x) => doLine(x, null, e.target))
+		}
+	})
+
+	
+	// Keyboard movement w/ ctrl+shift+arrow
+	
+	// Writes notes back to DOM for later saving
+	document.addEventListener("keydown", function(e) {
+
+		if (e.target.tagName == "TEXTAREA" && e.shiftKey && e.ctrlKey) {
+			if(DEBUG) console.log(`left${e.target.style.left}\n`)
+			var delta = 10;
+			switch(e.key) {
+				case "ArrowLeft" : e.target.style.left = e.target.offsetLeft - delta; break;
+				case "ArrowRight": e.target.style.left = e.target.offsetLeft + delta; break;
+				case "ArrowUp"   : e.target.style.top  = e.target.offsetTop  - delta; break;
+				case "ArrowDown" : e.target.style.top  = e.target.offsetTop  + delta; break;
+				default : return;
+			}
+			if(DEBUG) console.log(`*left${e.target.style.left}\n`)
+			
+            document.querySelectorAll(`.line[left-note="${e.target.id}" ]`).forEach((x) => doLine(x, e.target, null))
+			document.querySelectorAll(`.line[right-note="${e.target.id}" ]`).forEach((x) => doLine(x, null, e.target))
+
+		}
+	})
+
+	
+	
+	var lastnode = 0;
+	document.addEventListener("click", function(e) {
+		if(!e.ctrlKey) return;
+		if(DEBUG) console.log([e.target, lastnode])
+		if(lastnode == 0) {
+		  if(e.target.tagName == "TEXTAREA") {
+			lastnode = e.target;
+		  }
+          if(e.target.className == "line") {
+			lastnode = e.target;
+		  }
+
+		  return;
+		}
+		else if(lastnode == e.target) {
+			// Delete line
+			if (lastnode.className == "line") {
+				lastnode.parentNode.removeChild(lastnode)
+			}
+		}
+		else if(lastnode.tagName == "TEXTAREA" && e.target.tagName == "TEXTAREA") {
+		
+			var line = document.createElement("div")
+			line.className = "line"
+			line.setAttribute("left-note", lastnode.id)
+			line.setAttribute("right-note", e.target.id)
+			document.getElementById("wrap").append(line)
+			
+			doLine(line, lastnode, e.target)
+		}
+		
+		
+		lastnode = 0;
+	})
+
+	function doLine(line, left_note, right_note) {
+
+		left_note = left_note || document.getElementById(line.getAttribute("left-note"))
+		right_note = right_note || document.getElementById(line.getAttribute("right-note"))
+
+
+		var x1 = line.style.left = left_note.offsetLeft + left_note.offsetWidth/2
+		var y1 = line.style.top = left_note.offsetTop + left_note.offsetHeight/2
+
+		var x2 = right_note.offsetLeft + right_note.offsetWidth/2
+		var y2 = right_note.offsetTop + right_note.offsetHeight/2
+
+		line.style.width=Math.sqrt((x2 - x1)**2 + (y2 - y1)**2).toFixed(4)
+		line.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1).toFixed(4)}rad)`
+	}
+	
+	// document.getElementsByTagName("html")[0].outerHTML
+	
+	function download() {
+        var filename = window.location.href.split("/").filter(x => x.length).pop()
+
+        var data = document.getElementsByTagName("html")[0].outerHTML
+
+        var blob = new Blob([data], {type: 'text/html'}),
+            e    = document.createEvent('MouseEvents'),
+            a    = document.createElement('a')
+
+        a.download = filename
+        a.href = window.URL.createObjectURL(blob)
+        a.dataset.downloadurl =  ['text/html', a.download, a.href].join(':')
+        e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+        a.dispatchEvent(e)
+	}
+
+	function scootch(direction) {
+        var delta = 200;
+        document.querySelectorAll("textarea").forEach((x) => {
+          switch(direction) {
+		    case "right" : x.style.left = x.offsetLeft + delta; break;
+		    case "down"  : x.style.top  = x.offsetTop + delta; break;
+          }
+        })
+
+        document.querySelectorAll(".line").forEach((x) => doLine(x))
+
+	}
+
+    window.onbeforeunload = function() {
+            return 'You have unsaved changes!';
+    }
+	
+</script>
+
+	
+</head>
+<body>
+	<div id="wrap">
+    <h1 contenteditable="">"Web 2.0" / Lifehacks Map</h1>
+
+    <div id="buttons">
+		<button id="download" onclick="download()">Download</button>
+		<button id="scootchDown" onclick="scootch('down')">ScootchDown</button>
+		<button id="scootchRight" onclick="scootch('right')">ScootchRight</button>
+    </div>
+		
+		
+		
+	
+
+	
+	<textarea id="card_1614576827" draggable="true" style="left: 2440px; top: 1652px; margin: 0px; height: 80px; width: 133px;">Rationalists</textarea>
+<textarea id="card_1614576837" draggable="true" style="left: 2447px; top: 1995px;">Magic: The Gathering</textarea>
+<textarea id="card_1614576858" draggable="true" style="left: 1785px; top: 1144px;">PUA</textarea>
+<textarea id="card_1614576870" draggable="true" style="left: 1175px; top: 760px;">Life Hacks (Talk)</textarea>
+<textarea id="card_1614576951" draggable="true" style="left: 1753px; top: 1013px;">The Game Neil Strauss</textarea>
+<div class="line" left-note="card_1614576951" right-note="card_1614576858" style="left: 1803.5px; top: 1063.5px; width: 134.852px; transform: rotate(1.3312rad);"></div><textarea id="card_1614576971" draggable="true" style="left: 1174px; top: 457px;">EFF</textarea>
+<textarea id="card_1614576978" draggable="true" style="left: 908px; top: 616px;">Danny O'Brien</textarea>
+<div class="line" left-note="card_1614576978" right-note="card_1614576870" style="left: 958.5px; top: 666.5px; width: 303.356px; transform: rotate(0.4946rad);"></div>
+<textarea id="card_1614577002" draggable="true" style="left: 1175px; top: 907px;">OSCON</textarea>
+<textarea id="card_1614577006" draggable="true" style="left: 1021px; top: 865px;">Tim O'Reilly</textarea>
+<div class="line" left-note="card_1614577002" right-note="card_1614577006" style="left: 1225.5px; top: 957.5px; width: 159.625px; transform: rotate(-2.8753rad);"></div><div class="line" left-note="card_1614576870" right-note="card_1614577002" style="left: 1225.5px; top: 810.5px; width: 147px; transform: rotate(1.5708rad);"></div><textarea id="card_1614577074" draggable="true" style="left: 1387px; top: 574px;">Cory Doctorow</textarea>
+<textarea id="card_1614577088" draggable="true" style="left: 1527px; top: 880px;">Boing Boing</textarea>
+<div class="line" left-note="card_1614576978" right-note="card_1614576971" style="left: 958.5px; top: 666.5px; width: 309.898px; transform: rotate(-0.5388rad);"></div><div class="line" left-note="card_1614576971" right-note="card_1614577074" style="left: 1224.5px; top: 507.5px; width: 243.018px; transform: rotate(0.5023rad);"></div><div class="line" left-note="card_1614576870" right-note="card_1614577088" style="left: 1225.5px; top: 810.5px; width: 371.892px; transform: rotate(0.3286rad);"></div><div class="line" left-note="card_1614577074" right-note="card_1614577088" style="left: 1437.5px; top: 624.5px; width: 336.506px; transform: rotate(1.1417rad);"></div><textarea id="card_1614577158" draggable="true" style="left: 1809px; top: 755px;">Lifehacker (blog)</textarea>
+<div class="line" left-note="card_1614576870" right-note="card_1614577158" style="left: 1225.5px; top: 810.5px; width: 634.02px; transform: rotate(-0.0079rad);"></div><textarea id="card_1614577174" draggable="true" style="left: 1670px; top: 478px;">Gina Trappani</textarea>
+<div class="line" left-note="card_1614577174" right-note="card_1614577158" style="left: 1720px; top: 528px; width: 311.262px; transform: rotate(1.1043rad);"></div><div class="line" left-note="card_1614577088" right-note="card_1614577158" style="left: 1577.5px; top: 930.5px; width: 308.462px; transform: rotate(-0.4172rad);"></div><textarea id="card_1614577236" draggable="true" style="left: 2224px; top: 765px;">43 Folders</textarea>
+<textarea id="card_1614577244" draggable="true" style="left: 2227px; top: 512px;">Merlin Mann</textarea>
+<div class="line" left-note="card_1614577244" right-note="card_1614577236" style="left: 2278px; top: 562px; width: 254.031px; transform: rotate(1.5865rad);"></div><textarea id="card_1614577257" draggable="true" style="left: 2396px; top: 805px;">Inbox Zero</textarea>
+<div class="line" left-note="card_1614577236" right-note="card_1614577257" style="left: 2274.5px; top: 815.5px; width: 176.59px; transform: rotate(0.2285rad);"></div><textarea id="card_1614577280" draggable="true" style="left: 2294px; top: 893px;">Hipster PDA</textarea>
+<div class="line" left-note="card_1614577236" right-note="card_1614577280" style="left: 2274.5px; top: 815.5px; width: 145.89px; transform: rotate(1.0704rad);"></div><div class="line" left-note="card_1614577088" right-note="card_1614577236" style="left: 1577.5px; top: 930.5px; width: 706.423px; transform: rotate(-0.1635rad);"></div><textarea id="card_1614577325" draggable="true" style="left: 790px; top: 862px;">#info anarchy</textarea>
+<div class="line" left-note="card_1614576978" right-note="card_1614577325" style="left: 958.5px; top: 666.5px; width: 272.837px; transform: rotate(2.0181rad);"></div><textarea id="card_1614577336" draggable="true" style="left: 740px; top: 1102px;">Bram</textarea>
+<textarea id="card_1614577339" draggable="true" style="left: 960px; top: 1162px;">Free Haven</textarea>
+<div class="line" left-note="card_1614577336" right-note="card_1614577325" style="left: 790.5px; top: 1152.5px; width: 245.153px; transform: rotate(-1.3654rad);"></div><textarea id="card_1614577347" draggable="true" style="left: 760px; top: 1321px;">BitTorrent</textarea>
+<div class="line" left-note="card_1614577336" right-note="card_1614577347" style="left: 790.5px; top: 1152.5px; width: 219.911px; transform: rotate(1.4797rad);"></div><textarea id="card_1614577356" draggable="true" style="left: 1000px; top: 1351px;">Tor</textarea>
+<div class="line" left-note="card_1614577339" right-note="card_1614577356" style="left: 1010.5px; top: 1212.5px; width: 193.186px; transform: rotate(1.3622rad);"></div><div class="line" left-note="card_1614577339" right-note="card_1614577325" style="left: 1010.5px; top: 1212.5px; width: 344.819px; transform: rotate(-2.0863rad);"></div><textarea id="card_1614577366" draggable="true" style="left: 1150px; top: 1090px;">Aaron Swartz</textarea>
+<textarea id="card_1614577372" draggable="true" style="left: 1270px; top: 1291px;">RSS</textarea>
+<div class="line" left-note="card_1614577372" right-note="card_1614577366" style="left: 1320.5px; top: 1341.5px; width: 234.096px; transform: rotate(-2.109rad);"></div><div class="line" left-note="card_1614577366" right-note="card_1614577325" style="left: 1200.5px; top: 1140.5px; width: 426.127px; transform: rotate(-2.577rad);"></div><textarea id="card_1614577390" draggable="true" style="left: 1560px; top: 1150px;">Reddit</textarea>
+<div class="line" left-note="card_1614577366" right-note="card_1614577390" style="left: 1200.5px; top: 1140.5px; width: 414.367px; transform: rotate(0.1453rad);"></div><textarea id="card_1614577446" draggable="true" style="left: 1600px; top: 1321px; margin: 0px; width: 113px; height: 100px;">Y Combinator</textarea>
+<div class="line" left-note="card_1614577446" right-note="card_1614577390" style="left: 1657.5px; top: 1371.5px; width: 177.341px; transform: rotate(-1.839rad);"></div><textarea id="card_1614577457" draggable="true" style="left: 1550px; top: 1531px;">Paul Graham</textarea>
+<div class="line" left-note="card_1614577446" right-note="card_1614577457" style="left: 1657.5px; top: 1371.5px; width: 217.598px; transform: rotate(1.8358rad);"></div><textarea id="card_1614577464" draggable="true" style="left: 1770px; top: 1561px;">Sam Altman</textarea>
+<div class="line" left-note="card_1614577446" right-note="card_1614577464" style="left: 1657.5px; top: 1371.5px; width: 290.119px; transform: rotate(0.9742rad);"></div><textarea id="card_1614577547" draggable="true" style="left: 2654px; top: 625px;">Digital Minimalism</textarea>
+<textarea id="card_1614577559" draggable="true" style="left: 2668px; top: 484px;">Cal Newport</textarea>
+<div class="line" left-note="card_1614577559" right-note="card_1614577547" style="left: 2718.5px; top: 534.5px; width: 141.693px; transform: rotate(1.6698rad);"></div><div class="line" left-note="card_1614577158" right-note="card_1614577547" style="left: 1859.5px; top: 805.5px; width: 854.942px; transform: rotate(-0.1526rad);"></div><textarea id="card_1614577633" draggable="true" style="left: 2520px; top: 478px;">Leo</textarea>
+<div class="line" left-note="card_1614577633" right-note="card_1614577547" style="left: 2570.5px; top: 528.5px; width: 198.91px; transform: rotate(0.8316rad);"></div><textarea id="card_1614577656" draggable="true" style="left: 2439px; top: 1775px;">Zvi</textarea>
+<div class="line" left-note="card_1614576837" right-note="card_1614577656" style="left: 2498px; top: 2046px; width: 220.145px; transform: rotate(-1.6071rad);"></div><div class="line" left-note="card_1614577656" right-note="card_1614576827" style="left: 2490px; top: 1826px; width: 135.074px; transform: rotate(-1.4446rad);"></div><textarea id="card_1614577673" draggable="true" style="left: 2640px; top: 1649px;">Eliezer Yudkowsky</textarea>
+<div class="line" left-note="card_1614577673" right-note="card_1614576827" style="left: 2690px; top: 1700px; width: 183.175px; transform: rotate(-3.0979rad);"></div><textarea id="card_1614577686" draggable="true" style="left: 2611px; top: 1837px;">MIRI</textarea>
+<div class="line" left-note="card_1614577673" right-note="card_1614577686" style="left: 2690px; top: 1700px; width: 190.074px; transform: rotate(1.7186rad);"></div><div class="line" left-note="card_1614577686" right-note="card_1614576827" style="left: 2662px; top: 1888px; width: 249.882px; transform: rotate(-2.2399rad);"></div><textarea id="card_1614577711" draggable="true" style="left: 2110px; top: 1690px;">New Atheists</textarea>
+<textarea id="card_1614577717" draggable="true" style="left: 2010px; top: 1921px;">Dawkins</textarea>
+<textarea id="card_1614577728" draggable="true" style="left: 2147px; top: 1924px;">Harris</textarea>
+<textarea id="card_1614577731" draggable="true" style="left: 2235px; top: 1813px;">Hitchens</textarea>
+<div class="line" left-note="card_1614577711" right-note="card_1614577731" style="left: 2160px; top: 1740px; width: 176.782px; transform: rotate(0.7774rad);"></div><div class="line" left-note="card_1614577711" right-note="card_1614577728" style="left: 2160px; top: 1740px; width: 237.065px; transform: rotate(1.4098rad);"></div><div class="line" left-note="card_1614577711" right-note="card_1614577717" style="left: 2160.5px; top: 1740.5px; width: 251.716px; transform: rotate(1.9793rad);"></div><textarea id="card_1614578501" draggable="true" style="left: 2834px; top: 809px; margin: 0px; width: 78px; height: 88px;">Tim Ferris</textarea>
+<textarea id="card_1614578557" draggable="true" style="left: 2891px; top: 1083px;">Ryan Holiday</textarea>
+<textarea id="card_1614578567" draggable="true" style="left: 3030px; top: 1342px;">Peter Thiel</textarea>
+<textarea id="card_1614578577" draggable="true" style="left: 2912px; top: 1416px;">Hulk Hogan</textarea>
+<textarea id="card_1614578584" draggable="true" style="left: 2827px; top: 1243px;">Gawker</textarea>
+<div class="line" left-note="card_1614578567" right-note="card_1614578577" style="left: 3080px; top: 1392px; width: 139.284px; transform: rotate(2.5815rad);"></div><div class="line" left-note="card_1614578577" right-note="card_1614578584" style="left: 2962px; top: 1466px; width: 191.416px; transform: rotate(-2.0251rad);"></div><div class="line" left-note="card_1614578584" right-note="card_1614578567" style="left: 2878px; top: 1294px; width: 224.517px; transform: rotate(0.4517rad);"></div><div class="line" left-note="card_1614578567" right-note="card_1614578557" style="left: 3080.5px; top: 1392.5px; width: 293.942px; transform: rotate(-2.0634rad);"></div><textarea id="card_1614578602" draggable="true" style="left: 3050px; top: 922px;">Stoics</textarea>
+<div class="line" left-note="card_1614578602" right-note="card_1614578557" style="left: 3100.5px; top: 972.5px; width: 226.279px; transform: rotate(2.3499rad);"></div><div class="line" left-note="card_1614578501" right-note="card_1614578602" style="left: 2884.5px; top: 859.5px; width: 243.772px; transform: rotate(0.482rad);"></div><textarea id="card_1614578625" draggable="true" style="left: 2809px; top: 1658px;">Less Wrong</textarea>
+<div class="line" left-note="card_1614578625" right-note="card_1614577673" style="left: 2860px; top: 1708px; width: 170.188px; transform: rotate(-3.0946rad);"></div><textarea id="card_1614578661" draggable="true" style="left: 908px; top: 472px;">NLTK</textarea>
+<div class="line" left-note="card_1614578661" right-note="card_1614576978" style="left: 958.5px; top: 522.5px; width: 144px; transform: rotate(1.5708rad);"></div><textarea id="card_1614578714" draggable="true" style="left: 3104px; top: 1156px;">Growth Hacking</textarea>
+<div class="line" left-note="card_1614578557" right-note="card_1614578714" style="left: 2941.5px; top: 1133.5px; width: 225.162px; transform: rotate(0.3302rad);"></div><textarea id="card_1614578894" draggable="true" style="left: 1830px; top: 1360px;">HN</textarea>
+<textarea id="card_1614578897" draggable="true" style="left: 2000px; top: 1500px;">Soylent</textarea>
+<div class="line" left-note="card_1614578897" right-note="card_1614578894" style="left: 2050.5px; top: 1550.5px; width: 220.227px; transform: rotate(-2.4527rad);"></div><div class="line" left-note="card_1614578894" right-note="card_1614577446" style="left: 1880.5px; top: 1410.5px; width: 226.385px; transform: rotate(-2.9685rad);"></div><textarea id="card_1614578963" draggable="true" style="left: 2513px; top: 1422px;">Rob Rhinehart</textarea>
+<div class="line" left-note="card_1614578897" right-note="card_1614578963" style="left: 2050px; top: 1550px; width: 519.885px; transform: rotate(-0.1506rad);"></div><div class="line" left-note="card_1614578963" right-note="card_1614576827" style="left: 2564px; top: 1472px; width: 227.264px; transform: rotate(1.8243rad);"></div><div class="line" left-note="card_1614578963" right-note="card_1614577547" style="left: 2564px; top: 1472px; width: 808.218px; transform: rotate(-1.3967rad);"></div><div class="line" left-note="card_1614577390" right-note="card_1614576858" style="left: 1610.5px; top: 1200.5px; width: 225.08px; transform: rotate(-0.0267rad);"></div><textarea id="card_1614579518" draggable="true" style="left: 1898px; top: 432px;">David Allen</textarea>
+<textarea id="card_1614579524" draggable="true" style="left: 1910px; top: 575px;">GTD</textarea>
+<div class="line" left-note="card_1614579518" right-note="card_1614579524" style="left: 1948px; top: 482px; width: 144.499px; transform: rotate(1.4877rad);"></div><div class="line" left-note="card_1614579524" right-note="card_1614577158" style="left: 1960px; top: 626px; width: 205.913px; transform: rotate(2.0779rad);"></div><div class="line" left-note="card_1614579524" right-note="card_1614577236" style="left: 1960px; top: 626px; width: 367.01px; transform: rotate(0.5442rad);"></div><div class="line" left-note="card_1614577158" right-note="card_1614578584" style="left: 1860px; top: 806px; width: 1128.92px; transform: rotate(0.447rad);"></div><textarea id="card_1614580015" draggable="true" style="left: 2900px; top: 530px;">Deep Work</textarea>
+<textarea id="card_1614580020" draggable="true" style="left: 2860px; top: 380px;">Study Hacks</textarea>
+<textarea id="card_1614580025" draggable="true" style="left: 3100px; top: 420px;">Prof Hacker</textarea>
+<div class="line" left-note="card_1614580020" right-note="card_1614580025" style="left: 2910.5px; top: 430.5px; width: 243.31px; transform: rotate(0.1651rad);"></div><div class="line" left-note="card_1614580020" right-note="card_1614577559" style="left: 2910.5px; top: 430.5px; width: 218.357px; transform: rotate(2.6452rad);"></div><div class="line" left-note="card_1614580015" right-note="card_1614577559" style="left: 2950.5px; top: 580.5px; width: 236.516px; transform: rotate(-2.9459rad);"></div><textarea id="card_1614580979" draggable="true" style="left: 3200px; top: 670px;">Venkatesh Rao</textarea>
+<div class="line" left-note="card_1614576827" right-note="card_1614577711" style="left: 2507px; top: 1692px; width: 350.304px; transform: rotate(3.0041rad);"></div><textarea id="card_1614652131" draggable="true" style="left: 1920px; top: 960px;">todo.txt</textarea>
+<div class="line" left-note="card_1614577158" right-note="card_1614652131" style="left: 1859.5px; top: 805.5px; width: 233.122px; transform: rotate(1.0745rad);"></div><textarea id="card_1614657914" draggable="true" style="left: 2190px; top: 280px;">Pomodoro</textarea>
+<textarea id="card_1614657919" draggable="true" style="left: 2380px; top: 330px;">Bullet Journal</textarea>
+<textarea id="card_1614736767" draggable="true" style="left: 2040px; top: 2080px;">Meme</textarea>
+<div class="line" left-note="card_1614736767" right-note="card_1614577717" style="left: 2090px; top: 2130px; width: 160.823px; transform: rotate(-1.7584rad);"></div><textarea id="card_1614736959" draggable="true" style="left: 2980px; top: 760px;">24 hour work week</textarea>
+<div class="line" left-note="card_1614736959" right-note="card_1614578501" style="left: 3030px; top: 810px; width: 163.049px; transform: rotate(2.8683rad);"></div><textarea id="card_1614737022" draggable="true" style="left: 680px; top: 2530px;">Critiques</textarea>
+<textarea id="card_1614737027" draggable="true" style="left: 560px; top: 2740px;">Reagle</textarea>
+<textarea id="card_1614737030" draggable="true" style="left: 750px; top: 2770px;">Morozov</textarea>
+<textarea id="card_1614737034" draggable="true" style="left: 970px; top: 2740px;">Thomas</textarea>
+<textarea id="card_1614737069" draggable="true" style="left: 893px; top: 2559px;">Burnout</textarea>
+<div class="line" left-note="card_1614737027" right-note="card_1614737022" style="left: 610px; top: 2790px; width: 241.868px; transform: rotate(-1.0517rad);"></div><div class="line" left-note="card_1614737022" right-note="card_1614737030" style="left: 730px; top: 2580px; width: 250px; transform: rotate(1.287rad);"></div><div class="line" left-note="card_1614737022" right-note="card_1614737034" style="left: 730px; top: 2580px; width: 358.05px; transform: rotate(0.6267rad);"></div><div class="line" left-note="card_1614576870" right-note="card_1614579524" style="left: 1226px; top: 810px; width: 756.711px; transform: rotate(-0.2456rad);"></div><textarea id="card_1614737305" draggable="true" style="left: 1110px; top: 2150px;">Mark Manson ???</textarea>
+</div>	
+	
+
+
+
+<auto-scroll></auto-scroll></body></html>
